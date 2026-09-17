@@ -104,10 +104,21 @@ jobs:
         run: |
           set -euo pipefail
           godot --version
-          godot --headless --path . --editor --quit-after 8
+          godot --headless --path . --editor --quit-after 8 2>&1 | tee /tmp/godot-import.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload" /tmp/godot-import.log; then
+            echo "Godot reported script/resource parse errors during import."
+            exit 1
+          fi
 
       - name: Run headless smoke tests
-        run: godot --headless --path . --script res://tests/test_runner.gd
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_runner.gd 2>&1 | tee /tmp/godot-tests.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload" /tmp/godot-tests.log; then
+            echo "Godot reported script/resource parse errors during tests."
+            exit 1
+          fi
 
       - name: Create ephemeral debug keystore
         shell: bash
