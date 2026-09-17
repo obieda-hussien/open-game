@@ -39,6 +39,7 @@ anti_aliasing/quality/msaa_3d=1
 scaling_3d/scale=0.85
 scaling_3d/mode=0
 occlusion_culling/use_occlusion_culling=true
+textures/vram_compression/import_etc2_astc=true
 lights_and_shadows/directional_shadow/size.mobile=2048
 lights_and_shadows/positional_shadow/atlas_size.mobile=1024
 environment/defaults/default_clear_color=Color(0.012, 0.017, 0.028, 1)
