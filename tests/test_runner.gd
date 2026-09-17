@@ -5,6 +5,7 @@ var failures := 0
 func _initialize() -> void:
 	print("[tests] Last Shift headless smoke tests")
 	_test_main_scene()
+	_test_mobile_contract()
 	_test_json("res://data/missions/prologue.json", "missions")
 	_test_json("res://data/events/world_events.json", "events")
 	_test_mission_targets()
@@ -18,6 +19,14 @@ func _initialize() -> void:
 func _test_main_scene() -> void:
 	var scene := load("res://scenes/main.tscn")
 	_expect(scene is PackedScene, "main scene loads as PackedScene")
+
+func _test_mobile_contract() -> void:
+	var orientation := int(ProjectSettings.get_setting("display/window/handheld/orientation", -1))
+	_expect(orientation == DisplayServer.SCREEN_SENSOR_LANDSCAPE, "mobile orientation is sensor landscape")
+	_expect(FileAccess.file_exists("res://src/player/mobile_controls.gd"), "mobile controls exist")
+	_expect(FileAccess.file_exists("res://src/player/mobile_humanoid_avatar.gd"), "mobile humanoid avatar exists")
+	var player_scene := load("res://scenes/player/player.tscn")
+	_expect(player_scene is PackedScene, "player scene loads as PackedScene")
 
 func _test_json(path: String, required_key: String) -> void:
 	if not FileAccess.file_exists(path):

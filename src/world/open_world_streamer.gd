@@ -96,7 +96,10 @@ func _instantiate_one_procedural_cell() -> void:
 	if _loaded_cells.has(coord):
 		return
 
-	var detail := clampf(PerformanceDirector.quality_multiplier(), 0.45, 1.0)
+	var quality := clampf(PerformanceDirector.quality_multiplier(), 0.45, 1.0)
+	var distance := _cell_distance(coord, _last_player_cell)
+	var distance_lod := clampf(1.0 - maxf(distance - 0.45, 0.0) * 0.20, 0.38, 1.0)
+	var detail := clampf(quality * distance_lod, 0.35, 1.0)
 	var cell := WorldCell.new().configure(coord, cell_size, detail)
 	add_child(cell)
 	_loaded_cells[coord] = cell
