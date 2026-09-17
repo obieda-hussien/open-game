@@ -1,0 +1,46 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/player/third_person_controller.gd" id="1_player"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
+radius = 0.42
+height = 1.72
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.38
+height = 1.62
+
+[sub_resource type="StandardMaterial3D" id="Material_player"]
+albedo_color = Color(0.12, 0.15, 0.19, 1)
+metallic = 0.08
+roughness = 0.72
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_player")
+floor_stop_on_slope = true
+floor_max_angle = 0.82
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.90, 0)
+shape = SubResource("CapsuleShape_player")
+
+[node name="Avatar" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Avatar"]
+position = Vector3(0, 0.90, 0)
+mesh = SubResource("CapsuleMesh_player")
+material_override = SubResource("Material_player")
+
+[node name="CameraPivot" type="Node3D" parent="."]
+position = Vector3(0, 1.55, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="CameraPivot"]
+spring_length = 4.4
+margin = 0.15
+collision_mask = 1
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot/SpringArm3D"]
+current = true
+fov = 72.0
+near = 0.08
+far = 520.0

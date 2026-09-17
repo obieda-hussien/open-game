@@ -1,0 +1,78 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/core/game_bootstrap.gd" id="1_boot"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://src/world/open_world_streamer.gd" id="3_stream"]
+[ext_resource type="Script" path="res://src/world/dynamic_event_director.gd" id="4_events"]
+[ext_resource type="Script" path="res://src/world/time_weather_controller.gd" id="5_time"]
+[ext_resource type="Script" path="res://src/world/ambient_population.gd" id="6_population"]
+[ext_resource type="Script" path="res://src/ui/game_hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://src/player/mobile_controls.gd" id="8_mobile"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.008, 0.014, 0.03, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.12, 0.16, 0.23, 1)
+ambient_light_energy = 0.48
+reflected_light_source = 2
+tonemap_mode = 2
+glow_enabled = true
+fog_enabled = true
+fog_light_color = Color(0.11, 0.13, 0.16, 1)
+fog_density = 0.0015
+fog_sky_affect = 0.55
+
+[node name="GameRoot" type="Node3D"]
+script = ExtResource("1_boot")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-18, -35, 0)
+light_color = Color(1, 0.68, 0.46, 1)
+light_energy = 0.24
+shadow_enabled = true
+directional_shadow_max_distance = 95.0
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector3(-24, 0.2, -9.5)
+
+[node name="WorldStreamer" type="Node3D" parent="."]
+script = ExtResource("3_stream")
+player_path = NodePath("../Player")
+
+[node name="AmbientPopulation" type="Node3D" parent="."]
+script = ExtResource("6_population")
+player_path = NodePath("../Player")
+
+[node name="DynamicEventDirector" type="Node" parent="."]
+script = ExtResource("4_events")
+
+[node name="TimeWeatherController" type="Node" parent="."]
+script = ExtResource("5_time")
+sun_path = NodePath("../Sun")
+environment_path = NodePath("../WorldEnvironment")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="HUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("7_hud")
+
+[node name="MobileControls" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("8_mobile")

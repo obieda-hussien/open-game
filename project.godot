@@ -1,0 +1,49 @@
+[application]
+
+config/name="Last Shift"
+config/description="A mobile-first open-world story, responsibility and survival simulation."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+EventBus="*res://src/autoload/event_bus.gd"
+Settings="*res://src/autoload/game_settings.gd"
+WorldState="*res://src/autoload/world_state.gd"
+MissionManager="*res://src/autoload/mission_manager.gd"
+SaveSystem="*res://src/autoload/save_system.gd"
+PerformanceDirector="*res://src/autoload/performance_director.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+renderer/rendering_method.web="gl_compatibility"
+rendering_device/fallback_to_opengl3=true
+anti_aliasing/quality/msaa_3d=1
+scaling_3d/scale=0.85
+scaling_3d/mode=0
+occlusion_culling/use_occlusion_culling=true
+lights_and_shadows/directional_shadow/size.mobile=2048
+lights_and_shadows/positional_shadow/atlas_size.mobile=1024
+environment/defaults/default_clear_color=Color(0.012, 0.017, 0.028, 1)
+
+[physics]
+
+3d/default_gravity=24.0
+common/enable_pause_aware_picking=true
+
+[debug]
+
+file_logging/enable_file_logging=true
+file_logging/log_path="user://logs/last-shift.log"

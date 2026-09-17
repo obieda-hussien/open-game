@@ -1,0 +1,27 @@
+# Godot
+.godot/
+.import/
+*.translation
+
+# Builds / exports
+build/
+dist/
+exports/
+android/build/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local secrets / signing
+*.jks
+*.keystore
+.env
+.env.*
+!.env.example
+
+# Generated profiling captures
+*.perfetto-trace
+*.pck

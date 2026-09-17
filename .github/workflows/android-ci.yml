@@ -1,0 +1,212 @@
+name: Godot Android CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_release:
+        description: "Build signed release APK when release-signing secrets are configured"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: last-shift-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GODOT_CHANNEL: "stable"
+  JAVA_VERSION: "17"
+  ANDROID_API_LEVEL: "36"
+  ANDROID_BUILD_TOOLS: "35.0.1"
+
+jobs:
+  android:
+    name: Validate, test and export Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-${ANDROID_API_LEVEL}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}"
+
+      - name: Cache Godot editor and export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.${{ env.GODOT_CHANNEL }}
+          key: godot-${{ runner.os }}-${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}
+
+      - name: Install Godot and Android export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GODOT_VERSION}-${GODOT_CHANNEL}"
+          RELEASE_BASE="https://github.com/godotengine/godot-builds/releases/download/${VERSION}"
+          mkdir -p "$HOME/.local/bin"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_CHANNEL}"
+
+          curl --fail --location --retry 3 \
+            "${RELEASE_BASE}/Godot_v${VERSION}_linux.x86_64.zip" \
+            --output /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          GODOT_BIN="$(find /tmp/godot -maxdepth 1 -type f -name 'Godot_v*linux.x86_64*' | head -n1)"
+          install -m 0755 "$GODOT_BIN" "$HOME/.local/bin/godot"
+
+          curl --fail --location --retry 3 \
+            "${RELEASE_BASE}/Godot_v${VERSION}_export_templates.tpz" \
+            --output /tmp/templates.tpz
+          unzip -q /tmp/templates.tpz -d /tmp/godot-templates
+          cp -a /tmp/godot-templates/templates/. \
+            "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_CHANNEL}/"
+
+      - name: Add Godot to PATH
+        shell: bash
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Validate content graph
+        run: python3 tools/validate_content.py
+
+      - name: Import project and validate scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --version
+          godot --headless --path . --editor --quit-after 8
+
+      - name: Run headless smoke tests
+        run: godot --headless --path . --script res://tests/test_runner.gd
+
+      - name: Create ephemeral debug keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci
+          keytool -genkeypair -v \
+            -keystore .ci/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Last Shift,C=EG"
+          python3 tools/configure_ci_signing.py \
+            --debug-keystore .ci/debug.keystore
+
+      - name: Export debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/android
+          godot --headless --path . \
+            --export-debug "Android Debug" build/android/last-shift-debug.apk
+          test -s build/android/last-shift-debug.apk
+
+      - name: Configure release signing
+        id: release
+        if: github.event_name == 'workflow_dispatch' && inputs.build_release == true
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_USER: ${{ secrets.ANDROID_RELEASE_KEYSTORE_USER }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_B64:-}" ] || [ -z "${KEYSTORE_USER:-}" ] || [ -z "${KEYSTORE_PASSWORD:-}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Release secrets are not configured; release export will be skipped."
+            exit 0
+          fi
+
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > .ci/release.keystore
+          python3 tools/configure_ci_signing.py \
+            --release-keystore .ci/release.keystore \
+            --release-user "$KEYSTORE_USER" \
+            --release-password "$KEYSTORE_PASSWORD"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Export signed release APK
+        if: steps.release.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . \
+            --export-release "Android Release" build/android/last-shift-release.apk
+          test -s build/android/last-shift-release.apk
+
+      - name: Upload Android artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: last-shift-android-${{ github.run_number }}
+          path: |
+            build/android/*.apk
+            .godot/editor/editor_log*.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Send APKs to Telegram when configured
+        if: always()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        shell: bash
+        run: |
+          set +e
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "Telegram secrets not configured; skipping."
+            exit 0
+          fi
+
+          shopt -s nullglob
+          for FILE in build/android/*.apk; do
+            [ -f "$FILE" ] || continue
+            SIZE="$(wc -c < "$FILE" | tr -d ' ')"
+            NAME="$(basename "$FILE")"
+            if [ "$SIZE" -gt 50000000 ]; then
+              curl --fail-with-body -sS -X POST \
+                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                -d chat_id="$TELEGRAM_CHAT_ID" \
+                --data-urlencode "text=⚠️ ${NAME} is ${SIZE} bytes (>50 MB). Kept intact in GitHub Actions artifacts; not split." \
+                >/dev/null || true
+              continue
+            fi
+            curl --fail-with-body -sS -X POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+              -F chat_id="$TELEGRAM_CHAT_ID" \
+              -F document=@"$FILE" \
+              -F "caption=Last Shift | ${GITHUB_REF_NAME} | run ${GITHUB_RUN_NUMBER}" \
+              >/dev/null || true
+          done
