@@ -48,7 +48,7 @@ shadow_enabled = true
 directional_shadow_max_distance = 110.0
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
-position = Vector3(-24, 0.2, -9.5)
+position = Vector3(-18, 0.65, -10.5)
 
 [node name="WorldStreamer" type="Node3D" parent="."]
 script = ExtResource("3_stream")
@@ -56,7 +56,7 @@ player_path = NodePath("../Player")
 
 [node name="AmbientPopulation" type="Node3D" parent="."]
 script = ExtResource("6_population")
-player_path = NodePath("../Player")
+player_path = NodePath("../Player")")
 
 [node name="DynamicEventDirector" type="Node" parent="."]
 script = ExtResource("4_events")
