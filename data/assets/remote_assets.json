@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "description": "Pinned production GLB assets generated/curated through Higgsfield and synchronized before Godot import.",
+  "assets": [
+    {
+      "id": "district_origin_v2",
+      "path": "assets/external/last_shift_city_block_v2.glb",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JHATWjUV8fz3CYnjycIvpEbGU2/e2f8e665-38a1-49c2-9746-e13a8a2d096b.glb",
+      "sha256": "ba236bb4899824e84f58f1129f01aa632a8dac21af985af65a7e617649a961d0",
+      "size": 4848368,
+      "source": {
+        "provider": "Higgsfield 3D Jutsu / Blender",
+        "project_id": "73139e48-5345-4020-b2f9-88bc8f90a1c8",
+        "revision": 7
+      }
+    },
+    {
+      "id": "mechanic_character_v2",
+      "path": "assets/external/last_shift_mechanic_v2.glb",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JHATWjUV8fz3CYnjycIvpEbGU2/526146ca-44bf-422b-a8a7-6a0393cbab8b.glb",
+      "sha256": "5886f38b103ec6ad58fba3859ff07793d5629e394b9372cac94e999c3af7ace1",
+      "size": 245256,
+      "source": {
+        "provider": "Higgsfield 3D Jutsu / Blender",
+        "project_id": "a34739b4-649e-4832-9174-eb0fa31f4180",
+        "revision": 1
+      }
+    },
+    {
+      "id": "driveable_sedan_v1",
+      "path": "assets/external/last_shift_driveable_sedan_v1.glb",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JHATWjUV8fz3CYnjycIvpEbGU2/94e1c55d-f4fd-43da-a9cd-931ea8e3ac82.glb",
+      "sha256": "5824956ad891cd60ba69672df54388fba68fe3e9596ef728bef9d03f04a13535",
+      "size": 325996,
+      "source": {
+        "provider": "Higgsfield catalog + Blender optimization",
+        "project_id": "b6e5f824-d264-4c9d-a0be-eaa9b8842124",
+        "revision": 2
+      }
+    }
+  ]
+}
