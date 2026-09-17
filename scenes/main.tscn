@@ -56,7 +56,7 @@ player_path = NodePath("../Player")
 
 [node name="AmbientPopulation" type="Node3D" parent="."]
 script = ExtResource("6_population")
-player_path = NodePath("../Player")")
+player_path = NodePath("../Player")
 
 [node name="DynamicEventDirector" type="Node" parent="."]
 script = ExtResource("4_events")
