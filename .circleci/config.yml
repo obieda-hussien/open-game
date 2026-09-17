@@ -89,6 +89,24 @@ jobs:
 
       - restore_cache:
           keys:
+            - production-assets-v2-{{ checksum "data/assets/remote_assets.json" }}
+            - production-assets-v2-
+
+      - run:
+          name: Synchronize verified production 3D assets
+          command: |
+            set -euo pipefail
+            python3 tools/sync_3d_assets.py --required
+            python3 tools/sync_3d_assets.py --check --required
+            find assets/external -maxdepth 1 -type f -name '*.glb' -printf '%f %s bytes\n' | sort
+
+      - save_cache:
+          key: production-assets-v2-{{ checksum "data/assets/remote_assets.json" }}
+          paths:
+            - assets/external
+
+      - restore_cache:
+          keys:
             - godot-v1-4.7.2
             - godot-v1-
 
@@ -126,8 +144,8 @@ jobs:
           command: |
             set -euo pipefail
             export PATH="$HOME/.local/bin:$PATH"
-            godot --headless --path . --editor --quit-after 8 2>&1 | tee /tmp/godot-import.log
-            if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload" /tmp/godot-import.log; then
+            godot --headless --path . --editor --quit-after 12 2>&1 | tee /tmp/godot-import.log
+            if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload|Error parsing|Failed loading resource" /tmp/godot-import.log; then
               echo "Godot reported script/resource parse errors during import."
               exit 1
             fi
@@ -138,7 +156,7 @@ jobs:
             set -euo pipefail
             export PATH="$HOME/.local/bin:$PATH"
             godot --headless --path . --script res://tests/test_runner.gd 2>&1 | tee /tmp/godot-tests.log
-            if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload" /tmp/godot-tests.log; then
+            if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload|Error parsing|Failed loading resource" /tmp/godot-tests.log; then
               echo "Godot reported script/resource parse errors during tests."
               exit 1
             fi
