@@ -7,11 +7,16 @@ var _look_delta := Vector2.ZERO
 var _left_touch := -1
 var _right_touch := -1
 var _sprint_touch := -1
+var _brake_touch := -1
+var _handbrake_touch := -1
 var _left_position := Vector2.ZERO
 var _interact_queued := false
 var _jump_queued := false
 var _crouch_toggle_queued := false
 var _sprint_pressed := false
+var _brake_pressed := false
+var _handbrake_pressed := false
+var _vehicle_mode := false
 
 func _ready() -> void:
 	add_to_group("mobile_controls")
@@ -24,6 +29,16 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		queue_redraw()
+
+func set_vehicle_mode(enabled: bool) -> void:
+	_vehicle_mode = enabled
+	_sprint_pressed = false
+	_brake_pressed = false
+	_handbrake_pressed = false
+	_sprint_touch = -1
+	_brake_touch = -1
+	_handbrake_touch = -1
+	queue_redraw()
 
 func _input(event: InputEvent) -> void:
 	if not visible or get_tree().paused:
@@ -56,6 +71,12 @@ func consume_crouch_toggle() -> bool:
 func is_sprinting() -> bool:
 	return _sprint_pressed
 
+func is_vehicle_braking() -> bool:
+	return _brake_pressed
+
+func is_handbrake_pressed() -> bool:
+	return _handbrake_pressed
+
 func _handle_touch(event: InputEventScreenTouch) -> void:
 	var size := get_viewport_rect().size
 	var scale_value := _ui_scale(size)
@@ -68,11 +89,19 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 				queue_redraw()
 				return
 			"jump":
-				_jump_queued = true
+				if _vehicle_mode:
+					_handbrake_touch = event.index
+					_handbrake_pressed = true
+				else:
+					_jump_queued = true
 				queue_redraw()
 				return
 			"crouch":
-				_crouch_toggle_queued = true
+				if _vehicle_mode:
+					_brake_touch = event.index
+					_brake_pressed = true
+				else:
+					_crouch_toggle_queued = true
 				queue_redraw()
 				return
 			"sprint":
@@ -100,6 +129,14 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 			_sprint_touch = -1
 			_sprint_pressed = false
 			queue_redraw()
+		if event.index == _brake_touch:
+			_brake_touch = -1
+			_brake_pressed = false
+			queue_redraw()
+		if event.index == _handbrake_touch:
+			_handbrake_touch = -1
+			_handbrake_pressed = false
+			queue_redraw()
 
 func _handle_drag(event: InputEventScreenDrag) -> void:
 	if event.index == _left_touch:
@@ -126,39 +163,27 @@ func _draw() -> void:
 	var base := _joystick_center(size, s)
 	var knob := _left_position if _left_touch >= 0 else base
 
-	draw_circle(base, radius, Color(0.02, 0.03, 0.04, 0.24))
-	draw_arc(base, radius, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.26), 2.0 * s)
-	draw_circle(knob, 35.0 * s, Color(0.80, 0.88, 0.94, 0.34))
-	draw_arc(knob, 35.0 * s, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.46), 2.0 * s)
+	draw_circle(base, radius, Color(0.02, 0.03, 0.04, 0.20))
+	draw_arc(base, radius, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.22), 2.0 * s)
+	draw_circle(knob, 35.0 * s, Color(0.80, 0.88, 0.94, 0.30))
+	draw_arc(knob, 35.0 * s, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.42), 2.0 * s)
 
-	_draw_action_button(_button_center("use", size, s), 56.0 * s, "USE", Color(0.90, 0.42, 0.18, 0.34), s)
-	_draw_action_button(_button_center("jump", size, s), 49.0 * s, "JUMP", Color(0.82, 0.86, 0.92, 0.28), s)
-	_draw_action_button(_button_center("crouch", size, s), 45.0 * s, "CROUCH", Color(0.38, 0.54, 0.64, 0.28), s)
-	_draw_action_button(
-		_button_center("sprint", size, s),
-		46.0 * s,
-		"RUN",
-		Color(0.18, 0.68, 0.88, 0.44 if _sprint_pressed else 0.26),
-		s
-	)
+	_draw_action_button(_button_center("use", size, s), 54.0 * s, "EXIT" if _vehicle_mode else "USE", Color(0.90, 0.42, 0.18, 0.30), s)
+	_draw_action_button(_button_center("jump", size, s), 48.0 * s, "HANDBRAKE" if _vehicle_mode else "JUMP", Color(0.82, 0.86, 0.92, 0.25 if not _handbrake_pressed else 0.45), s)
+	_draw_action_button(_button_center("crouch", size, s), 44.0 * s, "BRAKE" if _vehicle_mode else "CROUCH", Color(0.38, 0.54, 0.64, 0.25 if not _brake_pressed else 0.48), s)
+	if not _vehicle_mode:
+		_draw_action_button(_button_center("sprint", size, s), 45.0 * s, "RUN", Color(0.18, 0.68, 0.88, 0.42 if _sprint_pressed else 0.23), s)
 
 func _draw_action_button(center: Vector2, radius: float, label: String, color: Color, s: float) -> void:
-	draw_circle(center, radius, Color(0.01, 0.015, 0.02, 0.24))
+	draw_circle(center, radius, Color(0.01, 0.015, 0.02, 0.20))
 	draw_circle(center, radius - 3.0 * s, color)
-	draw_arc(center, radius, 0.0, TAU, 40, Color(1.0, 1.0, 1.0, 0.40), 1.8 * s)
-	var font_size := maxi(10, roundi(13.0 * s))
-	draw_string(
-		ThemeDB.fallback_font,
-		center + Vector2(-radius, 5.0 * s),
-		label,
-		HORIZONTAL_ALIGNMENT_CENTER,
-		radius * 2.0,
-		font_size,
-		Color(1.0, 1.0, 1.0, 0.88)
-	)
+	draw_arc(center, radius, 0.0, TAU, 40, Color(1.0, 1.0, 1.0, 0.34), 1.8 * s)
+	var font_size := maxi(9, roundi((11.0 if label.length() > 6 else 13.0) * s))
+	draw_string(ThemeDB.fallback_font, center + Vector2(-radius, 5.0 * s), label, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, font_size, Color(1.0, 1.0, 1.0, 0.88))
 
 func _button_at(position: Vector2, size: Vector2, s: float) -> String:
-	for action in ["use", "jump", "crouch", "sprint"]:
+	var actions := ["use", "jump", "crouch"] if _vehicle_mode else ["use", "jump", "crouch", "sprint"]
+	for action in actions:
 		var radius := 60.0 * s if action == "use" else 53.0 * s
 		if position.distance_to(_button_center(action, size, s)) <= radius:
 			return action
