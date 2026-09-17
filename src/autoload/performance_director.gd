@@ -20,30 +20,30 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if delta <= 0.0:
 		return
-	var frame_ms := delta * 1000.0
+	var frame_ms: float = delta * 1000.0
 	_frame_time_ema = lerpf(_frame_time_ema, frame_ms, 0.06)
 	_sample_time += delta
 	if _sample_time < SAMPLE_WINDOW:
 		return
 	_sample_time = 0.0
 
-	var target_fps := max(20, int(Settings.get_value("display/target_fps", 45)))
-	var target_ms := 1000.0 / float(target_fps)
-	var raw_pressure := clampf((_frame_time_ema - target_ms) / maxf(target_ms, 1.0), -1.0, 1.5)
+	var target_fps: int = maxi(20, int(Settings.get_value("display/target_fps", 45)))
+	var target_ms: float = 1000.0 / float(target_fps)
+	var raw_pressure: float = clampf((_frame_time_ema - target_ms) / maxf(target_ms, 1.0), -1.0, 1.5)
 	_pressure = lerpf(_pressure, raw_pressure, PRESSURE_SMOOTHING * 4.0)
 	WorldState.performance_pressure = _pressure
 
 	if bool(Settings.get_value("graphics/dynamic_resolution", true)):
 		_adapt_render_scale(target_ms)
 
-	var scale := get_tree().root.scaling_3d_scale
+	var scale: float = get_tree().root.scaling_3d_scale
 	EventBus.performance_changed.emit(scale, _pressure, _tier)
 
 func _adapt_render_scale(target_ms: float) -> void:
-	var viewport := get_tree().root
-	var current := viewport.scaling_3d_scale
-	var minimum := float(Settings.get_value("graphics/render_scale_min", 0.60))
-	var maximum := float(Settings.get_value("graphics/render_scale_max", 1.00))
+	var viewport: Window = get_tree().root
+	var current: float = viewport.scaling_3d_scale
+	var minimum: float = float(Settings.get_value("graphics/render_scale_min", 0.60))
+	var maximum: float = float(Settings.get_value("graphics/render_scale_max", 1.00))
 
 	if _frame_time_ema > target_ms * 1.08:
 		_slow_streak += 1

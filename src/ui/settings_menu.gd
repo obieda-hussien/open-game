@@ -143,7 +143,7 @@ func _add_option(parent: VBoxContainer, label_text: String, key: String, options
 	row.add_child(label)
 	var option := OptionButton.new()
 	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var current := Settings.get_value(key, options[0] if not options.is_empty() else null)
+	var current: Variant = Settings.get_value(key, options[0] if not options.is_empty() else null)
 	for i in options.size():
 		option.add_item(String(options[i]))
 		option.set_item_metadata(i, options[i])
