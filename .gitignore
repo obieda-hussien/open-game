@@ -9,6 +9,12 @@ dist/
 exports/
 android/build/
 
+# Production 3D assets are pinned by data/assets/remote_assets.json and
+# synchronized by tools/sync_3d_assets.py before Godot import/export.
+assets/external/*.glb
+assets/external/*.gltf
+assets/external/*.bin
+
 # IDE / OS
 .idea/
 .vscode/
