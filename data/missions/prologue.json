@@ -1,0 +1,70 @@
+{
+  "missions": [
+    {
+      "id": "prologue_first_shift",
+      "title": "First Shift",
+      "start_stage": "open_garage",
+      "stages": {
+        "open_garage": {
+          "objective": "Open the garage for your first night shift.",
+          "complete_on": "garage_open",
+          "next": "read_board",
+          "set_flags": {
+            "garage_opened": true
+          }
+        },
+        "read_board": {
+          "objective": "Check the job board inside the garage.",
+          "complete_on": "job_board",
+          "next": "pickup"
+        },
+        "pickup": {
+          "objective": "Pick up the waiting delivery package.",
+          "complete_on": "delivery_pickup",
+          "next": "inspect_car",
+          "set_flags": {
+            "first_job_taken": true
+          }
+        },
+        "inspect_car": {
+          "objective": "A damaged car arrived late. Inspect it.",
+          "complete_on": "suspicious_car_inspect",
+          "next": "trunk_choice"
+        },
+        "trunk_choice": {
+          "objective": "The driver paid too much and told you not to open the trunk.",
+          "choices": [
+            {
+              "id": "keep_promise",
+              "label": "Keep your promise. Leave the trunk locked.",
+              "next": "promise_end",
+              "set_flags": {
+                "trunk_opened": false,
+                "kept_driver_promise": true
+              },
+              "reputation": 1
+            },
+            {
+              "id": "open_trunk",
+              "label": "Open the trunk and find out what is going on.",
+              "next": "risk_end",
+              "set_flags": {
+                "trunk_opened": true,
+                "kept_driver_promise": false
+              },
+              "reputation": -1
+            }
+          ]
+        },
+        "promise_end": {
+          "objective": "The car is collected before dawn. Someone now owes you a favor.",
+          "terminal": true
+        },
+        "risk_end": {
+          "objective": "You found something that was not meant for you. The district just got more dangerous.",
+          "terminal": true
+        }
+      }
+    }
+  ]
+}

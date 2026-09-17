@@ -1,0 +1,80 @@
+{
+  "events": [
+    {
+      "id": "roadside_breakdown",
+      "title": "Stranded Driver",
+      "description": "A vehicle has broken down nearby. Helping may pay cash or reputation.",
+      "start_hour": 6,
+      "end_hour": 23,
+      "chance_per_minute": 0.08,
+      "weight": 1.2,
+      "cooldown_minutes": 140,
+      "min_chapter": 1
+    },
+    {
+      "id": "urgent_delivery",
+      "title": "Urgent Delivery",
+      "description": "A local shop needs a package moved before closing.",
+      "start_hour": 10,
+      "end_hour": 22,
+      "chance_per_minute": 0.07,
+      "weight": 1.0,
+      "cooldown_minutes": 180,
+      "min_reputation": 0
+    },
+    {
+      "id": "night_customer",
+      "title": "Late Customer",
+      "description": "Someone is waiting outside the garage after hours.",
+      "start_hour": 23,
+      "end_hour": 4,
+      "chance_per_minute": 0.09,
+      "weight": 1.35,
+      "cooldown_minutes": 190,
+      "min_chapter": 1
+    },
+    {
+      "id": "street_argument",
+      "title": "Street Argument",
+      "description": "A loud dispute is drawing a crowd one block away.",
+      "start_hour": 15,
+      "end_hour": 2,
+      "chance_per_minute": 0.05,
+      "weight": 0.8,
+      "cooldown_minutes": 170
+    },
+    {
+      "id": "power_outage",
+      "title": "Power Cut",
+      "description": "Part of the district went dark. Shops and traffic are reacting.",
+      "start_hour": 18,
+      "end_hour": 5,
+      "chance_per_minute": 0.035,
+      "weight": 0.55,
+      "cooldown_minutes": 420
+    },
+    {
+      "id": "suspicious_vehicle",
+      "title": "Unmarked Vehicle",
+      "description": "The same unmarked car has passed your garage three times.",
+      "start_hour": 0,
+      "end_hour": 5,
+      "chance_per_minute": 0.06,
+      "weight": 0.9,
+      "cooldown_minutes": 260,
+      "min_chapter": 1,
+      "required_flags": ["first_job_taken"]
+    },
+    {
+      "id": "garage_referral",
+      "title": "Referral",
+      "description": "A previous customer recommended your garage to someone new.",
+      "start_hour": 8,
+      "end_hour": 21,
+      "chance_per_minute": 0.045,
+      "weight": 0.75,
+      "cooldown_minutes": 240,
+      "min_reputation": 2
+    }
+  ]
+}
