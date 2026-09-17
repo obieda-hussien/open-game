@@ -21,16 +21,16 @@ extends CharacterBody3D
 var _pitch := -0.16
 var _yaw := 0.0
 var _gravity := 24.0
-var _mobile_controls: Control
+var _mobile_controls: MobileControls
 var _mobile_crouch := false
 var _current_interactable: InteractionPoint
 var _active_vehicle: DriveableVehicle
 var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
-var _was_on_floor := false
 var _interaction_refresh := 0.0
 
 func _ready() -> void:
+	add_to_group("player")
 	_gravity = float(ProjectSettings.get_setting("physics/3d/default_gravity", 24.0))
 	camera.make_current()
 	floor_snap_length = 0.24
@@ -53,13 +53,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if get_tree().paused:
 		return
-
 	_update_mobile_look()
 	if is_instance_valid(_active_vehicle):
 		_process_vehicle(delta)
-		return
-
-	_process_on_foot(delta)
+	else:
+		_process_on_foot(delta)
 
 func _process_on_foot(delta: float) -> void:
 	var input_vector := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
@@ -70,12 +68,12 @@ func _process_on_foot(delta: float) -> void:
 	if is_instance_valid(_mobile_controls):
 		input_vector += _mobile_controls.move_vector
 		input_vector = input_vector.limit_length(1.0)
-		sprinting = sprinting or bool(_mobile_controls.call("is_sprinting"))
-		if bool(_mobile_controls.call("consume_interact")):
+		sprinting = sprinting or _mobile_controls.is_sprinting()
+		if _mobile_controls.consume_interact():
 			_interact()
-		if bool(_mobile_controls.call("consume_jump")):
+		if _mobile_controls.consume_jump():
 			jump_requested = true
-		if bool(_mobile_controls.call("consume_crouch_toggle")):
+		if _mobile_controls.consume_crouch_toggle():
 			_mobile_crouch = not _mobile_crouch
 			crouching = _mobile_crouch
 
@@ -96,7 +94,7 @@ func _process_on_foot(delta: float) -> void:
 	forward = forward.normalized()
 	right = right.normalized()
 
-	var desired_direction := (right * input_vector.x + forward * -input_vector.y)
+	var desired_direction := right * input_vector.x + forward * -input_vector.y
 	if desired_direction.length_squared() > 1.0:
 		desired_direction = desired_direction.normalized()
 	var has_move_input := desired_direction.length_squared() > 0.0025
@@ -121,7 +119,6 @@ func _process_on_foot(delta: float) -> void:
 		velocity.y = jump_velocity
 		_jump_buffer_remaining = 0.0
 		_coyote_remaining = 0.0
-		apply_floor_snap()
 
 	move_and_slide()
 	_update_crouch(crouching, delta)
@@ -139,8 +136,6 @@ func _process_on_foot(delta: float) -> void:
 		_interaction_refresh = 0.045
 		_update_interaction_prompt()
 
-	_was_on_floor = is_on_floor()
-
 func _process_vehicle(delta: float) -> void:
 	var input_vector := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var braking := Input.is_action_pressed("crouch")
@@ -150,9 +145,9 @@ func _process_vehicle(delta: float) -> void:
 	if is_instance_valid(_mobile_controls):
 		input_vector += _mobile_controls.move_vector
 		input_vector = input_vector.limit_length(1.0)
-		braking = braking or bool(_mobile_controls.call("is_vehicle_braking"))
-		handbrake = handbrake or bool(_mobile_controls.call("is_handbrake_pressed"))
-		if bool(_mobile_controls.call("consume_interact")):
+		braking = braking or _mobile_controls.is_vehicle_braking()
+		handbrake = handbrake or _mobile_controls.is_handbrake_pressed()
+		if _mobile_controls.consume_interact():
 			exit_requested = true
 
 	var throttle := clampf(-input_vector.y, -1.0, 1.0)
@@ -163,13 +158,16 @@ func _process_vehicle(delta: float) -> void:
 	velocity = Vector3.ZERO
 	_update_camera(true, false, false, delta)
 
-	if exit_requested and _active_vehicle.get_speed_kph() < 7.0:
-		_exit_vehicle()
+	if exit_requested:
+		if _active_vehicle.get_speed_kph() < 7.0:
+			_exit_vehicle()
+		else:
+			EventBus.show_toast("Slow down before leaving the vehicle.", 1.4)
 
 func _update_mobile_look() -> void:
 	if not is_instance_valid(_mobile_controls):
 		return
-	var mobile_look: Vector2 = _mobile_controls.call("consume_look_delta")
+	var mobile_look := _mobile_controls.consume_look_delta()
 	if mobile_look != Vector2.ZERO:
 		var mobile_sensitivity := float(Settings.get_value("gameplay/camera_sensitivity", 0.18)) * 0.92
 		_apply_look(mobile_look * mobile_sensitivity)
@@ -187,12 +185,10 @@ func _update_crouch(crouching: bool, delta: float) -> void:
 func _update_camera(in_vehicle: bool, sprinting: bool, crouching: bool, delta: float) -> void:
 	var pivot_target := 1.46 if in_vehicle else (1.28 if crouching else 1.55)
 	camera_pivot.position.y = lerpf(camera_pivot.position.y, pivot_target, 1.0 - exp(-9.0 * delta))
-
 	var speed_2d := Vector2(velocity.x, velocity.z).length()
 	var moving_fast := sprinting and speed_2d > walk_speed
 	var target_fov := 76.0 if in_vehicle else (77.0 if moving_fast else 72.0)
 	camera.fov = lerpf(camera.fov, target_fov, 1.0 - exp(-6.0 * delta))
-
 	var target_arm := 5.15 if in_vehicle else 3.78
 	spring_arm.spring_length = lerpf(spring_arm.spring_length, target_arm, 1.0 - exp(-7.5 * delta))
 	var target_offset_x := 0.12 if in_vehicle else 0.34
@@ -223,7 +219,6 @@ func _update_interaction_prompt() -> void:
 		var point := node as InteractionPoint
 		if not point.enabled:
 			continue
-
 		var to_point := point.global_position - camera_origin
 		var distance := to_point.length()
 		if distance <= 0.05 or distance > interaction_distance:
@@ -234,8 +229,6 @@ func _update_interaction_prompt() -> void:
 			continue
 		if not _has_line_of_sight(space_state, camera_origin, point.global_position, distance):
 			continue
-
-		# Prefer whatever the player is actually looking at. Distance only breaks ties.
 		var score := facing * 4.0 - distance * 0.16
 		if score > best_score:
 			best_score = score
@@ -252,7 +245,6 @@ func _has_line_of_sight(space_state: PhysicsDirectSpaceState3D, from: Vector3, t
 	if hit.is_empty():
 		return true
 	var hit_position: Vector3 = hit.get("position", to)
-	# InteractionPoint itself has no collision; allow a surface immediately behind it.
 	return from.distance_to(hit_position) >= target_distance - 0.32
 
 func _set_current_interactable(next: InteractionPoint) -> void:
@@ -271,7 +263,6 @@ func _interact() -> void:
 		else:
 			EventBus.show_toast("Slow down before leaving the vehicle.", 1.4)
 		return
-
 	if not is_instance_valid(_current_interactable):
 		return
 
@@ -283,7 +274,6 @@ func _interact() -> void:
 				_current_interactable.interact(self)
 				_enter_vehicle(vehicle_node as DriveableVehicle)
 				return
-
 	_current_interactable.interact(self)
 
 func _enter_vehicle(vehicle: DriveableVehicle) -> void:
@@ -297,7 +287,7 @@ func _enter_vehicle(vehicle: DriveableVehicle) -> void:
 	velocity = Vector3.ZERO
 	_set_current_interactable(null)
 	if is_instance_valid(_mobile_controls):
-		_mobile_controls.call("set_vehicle_mode", true)
+		_mobile_controls.set_vehicle_mode(true)
 	EventBus.show_toast("Vehicle controls active", 1.2)
 
 func _exit_vehicle() -> void:
@@ -312,7 +302,7 @@ func _exit_vehicle() -> void:
 	avatar.visible = true
 	body_collision.set_deferred("disabled", false)
 	if is_instance_valid(_mobile_controls):
-		_mobile_controls.call("set_vehicle_mode", false)
+		_mobile_controls.set_vehicle_mode(false)
 	EventBus.show_toast("Exited vehicle", 1.0)
 
 func get_vehicle_hud_state() -> Dictionary:
@@ -325,7 +315,9 @@ func is_driving() -> bool:
 
 func _resolve_mobile_controls() -> void:
 	var nodes := get_tree().get_nodes_in_group("mobile_controls")
-	if not nodes.is_empty():
-		_mobile_controls = nodes[0]
-		if _mobile_controls.has_method("set_vehicle_mode"):
-			_mobile_controls.call("set_vehicle_mode", false)
+	if nodes.is_empty():
+		return
+	var candidate := nodes[0]
+	if candidate is MobileControls:
+		_mobile_controls = candidate as MobileControls
+		_mobile_controls.set_vehicle_mode(false)
