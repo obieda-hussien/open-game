@@ -1,17 +1,17 @@
 {
-  "version": 1,
+  "version": 2,
   "description": "Pinned production GLB assets generated/curated through Higgsfield and synchronized before Godot import.",
   "assets": [
     {
-      "id": "district_origin_v2",
+      "id": "district_origin_v3",
       "path": "assets/external/last_shift_city_block_v2.glb",
-      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JHATWjUV8fz3CYnjycIvpEbGU2/e2f8e665-38a1-49c2-9746-e13a8a2d096b.glb",
-      "sha256": "ba236bb4899824e84f58f1129f01aa632a8dac21af985af65a7e617649a961d0",
-      "size": 4848368,
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3JHATWjUV8fz3CYnjycIvpEbGU2/5439b7aa-ca13-4b76-82cf-218f88951f21.glb",
+      "sha256": "25deebd749e84f7d24bcf2be9ab1c7463d3638f7627ce1c91b2d1a8bf94eb3d8",
+      "size": 5871256,
       "source": {
-        "provider": "Higgsfield 3D Jutsu / Blender",
+        "provider": "Higgsfield 3D Jutsu / Blender mobile PBR pass",
         "project_id": "73139e48-5345-4020-b2f9-88bc8f90a1c8",
-        "revision": 7
+        "revision": 8
       }
     },
     {
