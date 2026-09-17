@@ -1,17 +1,16 @@
 extends Control
 
-const MOVE_RADIUS := 92.0
-const LOOK_SCALE := 0.004
-const ACTION_RADIUS := 58.0
+const LOOK_SCALE := 0.0048
 
 var move_vector := Vector2.ZERO
 var _look_delta := Vector2.ZERO
 var _left_touch := -1
 var _right_touch := -1
 var _sprint_touch := -1
-var _left_origin := Vector2.ZERO
 var _left_position := Vector2.ZERO
 var _interact_queued := false
+var _jump_queued := false
+var _crouch_toggle_queued := false
 var _sprint_pressed := false
 
 func _ready() -> void:
@@ -44,33 +43,52 @@ func consume_interact() -> bool:
 	_interact_queued = false
 	return value
 
+func consume_jump() -> bool:
+	var value := _jump_queued
+	_jump_queued = false
+	return value
+
+func consume_crouch_toggle() -> bool:
+	var value := _crouch_toggle_queued
+	_crouch_toggle_queued = false
+	return value
+
 func is_sprinting() -> bool:
 	return _sprint_pressed
 
 func _handle_touch(event: InputEventScreenTouch) -> void:
-	var viewport_size := get_viewport_rect().size
-	var use_center := _use_button_center(viewport_size)
-	var sprint_center := _sprint_button_center(viewport_size)
+	var size := get_viewport_rect().size
+	var scale_value := _ui_scale(size)
+	var button := _button_at(event.position, size, scale_value)
 
 	if event.pressed:
-		if event.position.distance_to(use_center) <= ACTION_RADIUS:
-			_interact_queued = true
-			queue_redraw()
-			return
-		if event.position.distance_to(sprint_center) <= ACTION_RADIUS:
-			_sprint_touch = event.index
-			_sprint_pressed = true
-			queue_redraw()
-			return
-		if event.position.x < viewport_size.x * 0.48 and event.position.y > viewport_size.y * 0.34 and _left_touch < 0:
+		match button:
+			"use":
+				_interact_queued = true
+				queue_redraw()
+				return
+			"jump":
+				_jump_queued = true
+				queue_redraw()
+				return
+			"crouch":
+				_crouch_toggle_queued = true
+				queue_redraw()
+				return
+			"sprint":
+				_sprint_touch = event.index
+				_sprint_pressed = true
+				queue_redraw()
+				return
+
+		if event.position.x < size.x * 0.43 and event.position.y > size.y * 0.34 and _left_touch < 0:
 			_left_touch = event.index
-			_left_origin = event.position
 			_left_position = event.position
+			_update_move_vector(size)
 			queue_redraw()
 			return
-		if _right_touch < 0:
+		if event.position.x > size.x * 0.36 and _right_touch < 0:
 			_right_touch = event.index
-			return
 	else:
 		if event.index == _left_touch:
 			_left_touch = -1
@@ -86,41 +104,84 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 func _handle_drag(event: InputEventScreenDrag) -> void:
 	if event.index == _left_touch:
 		_left_position = event.position
-		var offset := (_left_position - _left_origin) / MOVE_RADIUS
-		move_vector = offset.limit_length(1.0)
+		_update_move_vector(get_viewport_rect().size)
 		queue_redraw()
 	elif event.index == _right_touch:
 		_look_delta += event.relative * LOOK_SCALE
 
+func _update_move_vector(size: Vector2) -> void:
+	var scale_value := _ui_scale(size)
+	var radius := 92.0 * scale_value
+	var base := _joystick_center(size, scale_value)
+	var offset := (_left_position - base) / radius
+	move_vector = offset.limit_length(1.0)
+	_left_position = base + move_vector * radius
+
 func _draw() -> void:
 	if not visible:
 		return
-	var viewport_size := get_viewport_rect().size
-	var base_color := Color(1, 1, 1, 0.16)
-	var active_color := Color(0.22, 0.78, 1.0, 0.34)
-
-	var fallback_left := Vector2(130.0, viewport_size.y - 135.0)
-	var base := _left_origin if _left_touch >= 0 else fallback_left
+	var size := get_viewport_rect().size
+	var s := _ui_scale(size)
+	var radius := 92.0 * s
+	var base := _joystick_center(size, s)
 	var knob := _left_position if _left_touch >= 0 else base
-	draw_circle(base, MOVE_RADIUS, base_color)
-	draw_circle(knob, 34.0, active_color)
 
-	var use_center := _use_button_center(viewport_size)
-	var sprint_center := _sprint_button_center(viewport_size)
-	draw_circle(use_center, ACTION_RADIUS, Color(1.0, 0.42, 0.20, 0.24))
-	draw_circle(use_center, 22.0, Color(1.0, 0.64, 0.36, 0.52))
-	draw_circle(
-		sprint_center,
-		ACTION_RADIUS,
-		Color(0.22, 0.78, 1.0, 0.36 if _sprint_pressed else 0.18)
+	draw_circle(base, radius, Color(0.02, 0.03, 0.04, 0.24))
+	draw_arc(base, radius, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.26), 2.0 * s)
+	draw_circle(knob, 35.0 * s, Color(0.80, 0.88, 0.94, 0.34))
+	draw_arc(knob, 35.0 * s, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.46), 2.0 * s)
+
+	_draw_action_button(_button_center("use", size, s), 56.0 * s, "USE", Color(0.90, 0.42, 0.18, 0.34), s)
+	_draw_action_button(_button_center("jump", size, s), 49.0 * s, "JUMP", Color(0.82, 0.86, 0.92, 0.28), s)
+	_draw_action_button(_button_center("crouch", size, s), 45.0 * s, "CROUCH", Color(0.38, 0.54, 0.64, 0.28), s)
+	_draw_action_button(
+		_button_center("sprint", size, s),
+		46.0 * s,
+		"RUN",
+		Color(0.18, 0.68, 0.88, 0.44 if _sprint_pressed else 0.26),
+		s
 	)
-	draw_circle(sprint_center, 18.0, Color(0.45, 0.86, 1.0, 0.48))
 
-func _use_button_center(size: Vector2) -> Vector2:
-	return Vector2(size.x - 105.0, size.y - 175.0)
+func _draw_action_button(center: Vector2, radius: float, label: String, color: Color, s: float) -> void:
+	draw_circle(center, radius, Color(0.01, 0.015, 0.02, 0.24))
+	draw_circle(center, radius - 3.0 * s, color)
+	draw_arc(center, radius, 0.0, TAU, 40, Color(1.0, 1.0, 1.0, 0.40), 1.8 * s)
+	var font_size := maxi(10, roundi(13.0 * s))
+	draw_string(
+		ThemeDB.fallback_font,
+		center + Vector2(-radius, 5.0 * s),
+		label,
+		HORIZONTAL_ALIGNMENT_CENTER,
+		radius * 2.0,
+		font_size,
+		Color(1.0, 1.0, 1.0, 0.88)
+	)
 
-func _sprint_button_center(size: Vector2) -> Vector2:
-	return Vector2(size.x - 225.0, size.y - 92.0)
+func _button_at(position: Vector2, size: Vector2, s: float) -> String:
+	for action in ["use", "jump", "crouch", "sprint"]:
+		var radius := 60.0 * s if action == "use" else 53.0 * s
+		if position.distance_to(_button_center(action, size, s)) <= radius:
+			return action
+	return ""
+
+func _button_center(action: String, size: Vector2, s: float) -> Vector2:
+	var bottom := size.y - 34.0 * s
+	match action:
+		"use":
+			return Vector2(size.x - 92.0 * s, bottom - 94.0 * s)
+		"jump":
+			return Vector2(size.x - 105.0 * s, bottom - 226.0 * s)
+		"crouch":
+			return Vector2(size.x - 220.0 * s, bottom - 70.0 * s)
+		"sprint":
+			return Vector2(size.x - 270.0 * s, bottom - 190.0 * s)
+	return Vector2.ZERO
+
+func _joystick_center(size: Vector2, s: float) -> Vector2:
+	return Vector2(128.0 * s, size.y - 128.0 * s)
+
+func _ui_scale(size: Vector2) -> float:
+	return clampf(minf(size.x / 1280.0, size.y / 720.0), 0.72, 1.45)
 
 func _refresh_visibility() -> void:
 	visible = OS.has_feature("mobile") or bool(Settings.get_value("gameplay/show_touch_controls", false))

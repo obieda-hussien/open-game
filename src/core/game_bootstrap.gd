@@ -8,6 +8,8 @@ func _enter_tree() -> void:
 	_ensure_input_map()
 
 func _ready() -> void:
+	if OS.has_feature("mobile"):
+		DisplayServer.screen_set_orientation(DisplayServer.SCREEN_SENSOR_LANDSCAPE)
 	if SaveSystem.has_slot(0):
 		SaveSystem.load_slot(0)
 	if MissionManager.active.is_empty() and MissionManager.completed.is_empty():
@@ -31,6 +33,7 @@ func _ensure_input_map() -> void:
 	_add_key_action("move_right", KEY_D)
 	_add_key_action("jump", KEY_SPACE)
 	_add_key_action("sprint", KEY_SHIFT)
+	_add_key_action("crouch", KEY_C)
 	_add_key_action("interact", KEY_E)
 	_add_key_action("pause", KEY_ESCAPE)
 
