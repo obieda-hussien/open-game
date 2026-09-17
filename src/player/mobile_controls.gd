@@ -1,3 +1,4 @@
+class_name MobileControls
 extends Control
 
 const LOOK_SCALE := 0.0048
