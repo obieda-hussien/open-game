@@ -38,6 +38,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Cache production 3D assets
+        uses: actions/cache@v4
+        with:
+          path: assets/external
+          key: production-assets-${{ runner.os }}-${{ hashFiles('data/assets/remote_assets.json') }}
+
+      - name: Synchronize verified production 3D assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/sync_3d_assets.py --required
+          python3 tools/sync_3d_assets.py --check --required
+          find assets/external -maxdepth 1 -type f -name '*.glb' -printf '%f %s bytes\n' | sort
+
       - name: Set up JDK
         uses: actions/setup-java@v5
         with:
@@ -104,8 +118,8 @@ jobs:
         run: |
           set -euo pipefail
           godot --version
-          godot --headless --path . --editor --quit-after 8 2>&1 | tee /tmp/godot-import.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload" /tmp/godot-import.log; then
+          godot --headless --path . --editor --quit-after 12 2>&1 | tee /tmp/godot-import.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload|Error parsing|Failed loading resource" /tmp/godot-import.log; then
             echo "Godot reported script/resource parse errors during import."
             exit 1
           fi
@@ -115,7 +129,7 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --path . --script res://tests/test_runner.gd 2>&1 | tee /tmp/godot-tests.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload" /tmp/godot-tests.log; then
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed to load script|Failed to create an autoload|Error parsing|Failed loading resource" /tmp/godot-tests.log; then
             echo "Godot reported script/resource parse errors during tests."
             exit 1
           fi
