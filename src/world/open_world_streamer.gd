@@ -5,6 +5,8 @@ extends Node3D
 @export var authored_cells_root := "res://content/world/cells"
 @export var refresh_seconds := 0.20
 
+const PRODUCTION_ORIGIN_MODEL := "res://assets/external/last_shift_city_block_v2.glb"
+
 var _player: Node3D
 var _loaded_cells: Dictionary = {}
 var _pending_paths: Dictionary = {}
@@ -58,13 +60,22 @@ func _refresh_needed_cells(force: bool) -> void:
 	_prune_queued_cells(wanted, center, keep_radius)
 
 func _request_cell(coord: Vector2i) -> void:
+	if coord == Vector2i.ZERO and ResourceLoader.exists(PRODUCTION_ORIGIN_MODEL):
+		if _request_threaded(PRODUCTION_ORIGIN_MODEL, coord, "production"):
+			return
+
 	var authored_path := "%s/cell_%d_%d.tscn" % [authored_cells_root, coord.x, coord.y]
 	if ResourceLoader.exists(authored_path):
-		var err := ResourceLoader.load_threaded_request(authored_path, "PackedScene", false)
-		if err == OK:
-			_pending_paths[authored_path] = coord
+		if _request_threaded(authored_path, coord, "authored"):
 			return
 	_procedural_queue.append(coord)
+
+func _request_threaded(path: String, coord: Vector2i, kind: String) -> bool:
+	var err := ResourceLoader.load_threaded_request(path, "PackedScene", false)
+	if err != OK:
+		return false
+	_pending_paths[path] = {"coord": coord, "kind": kind}
+	return true
 
 func _poll_threaded_loads() -> void:
 	for path_variant in _pending_paths.keys():
@@ -72,22 +83,35 @@ func _poll_threaded_loads() -> void:
 		var status := ResourceLoader.load_threaded_get_status(path)
 		if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
 			continue
-		var coord: Vector2i = _pending_paths[path]
+
+		var entry: Dictionary = _pending_paths[path]
 		_pending_paths.erase(path)
+		var coord: Vector2i = entry.get("coord", Vector2i.ZERO)
+		var kind := String(entry.get("kind", "authored"))
+
 		if status != ResourceLoader.THREAD_LOAD_LOADED:
 			_procedural_queue.append(coord)
 			continue
+
 		var resource := ResourceLoader.load_threaded_get(path)
 		if not (resource is PackedScene):
 			_procedural_queue.append(coord)
 			continue
-		var instance := (resource as PackedScene).instantiate()
-		if instance is Node3D:
-			instance.position = Vector3(float(coord.x) * cell_size, 0.0, float(coord.y) * cell_size)
-			add_child(instance)
-			_loaded_cells[coord] = instance
+
+		var instance: Node3D
+		if kind == "production":
+			instance = ProductionOriginRuntime.new().configure(resource as PackedScene)
 		else:
-			instance.queue_free()
+			var raw_instance := (resource as PackedScene).instantiate()
+			if not (raw_instance is Node3D):
+				raw_instance.queue_free()
+				_procedural_queue.append(coord)
+				continue
+			instance = raw_instance as Node3D
+
+		instance.position = Vector3(float(coord.x) * cell_size, 0.0, float(coord.y) * cell_size)
+		add_child(instance)
+		_loaded_cells[coord] = instance
 
 func _instantiate_one_procedural_cell() -> void:
 	if _procedural_queue.is_empty():
@@ -115,8 +139,8 @@ func _take_nearest_queued() -> Vector2i:
 	return _procedural_queue.pop_at(best_index)
 
 func _is_pending(coord: Vector2i) -> bool:
-	for pending_coord in _pending_paths.values():
-		if pending_coord == coord:
+	for pending_variant in _pending_paths.values():
+		if pending_variant is Dictionary and pending_variant.get("coord", Vector2i(999999, 999999)) == coord:
 			return true
 	return false
 
